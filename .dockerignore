@@ -1,0 +1,7 @@
+**
+!apps/
+!apps/**
+!packages/
+!packages/**
+!package.json
+

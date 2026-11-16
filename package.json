@@ -1,0 +1,22 @@
+{
+  "name": "shadowlab-replay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.12"
+  },
+  "scripts": {
+    "demo": "node packages/cli/main.ts demo",
+    "test": "node --test tests/*.test.ts",
+    "coverage": "node --experimental-test-coverage --test-coverage-include=packages/core/*.ts --test-coverage-lines=85 --test tests/*.test.ts",
+    "record": "node packages/cli/main.ts record",
+    "replay": "node packages/cli/main.ts replay",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "prettier": "3.10.1",
+    "typescript": "5.9.3"
+  }
+}

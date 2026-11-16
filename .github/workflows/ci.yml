@@ -1,0 +1,35 @@
+name: Replay verification
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run coverage
+      - run: npm run demo -- --out artifacts/demo
+      - name: Exercise the container boundary and regression exit code
+        shell: bash
+        run: |
+          docker compose up -d --build
+          for port in 4101 4102; do
+            curl -s --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:$port/ > /dev/null
+          done
+          rc=0
+          npm run replay -- --baseline http://127.0.0.1:4101 --candidate http://127.0.0.1:4102 --out artifacts/compose || rc=$?
+          test "$rc" -eq 1
+          node -e "const r=require('./artifacts/compose/report.json');if(r.first!=='summary')process.exit(1)"
+      - if: always()
+        run: docker compose down
+      - uses: actions/upload-artifact@v4
+        with:
+          name: replay-evidence
+          path: artifacts/
+          retention-days: 14
+

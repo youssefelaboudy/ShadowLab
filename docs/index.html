@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ShadowLab · Replay report</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f6f5ef;color:#142d2a;font:16px/1.55 "Segoe UI",system-ui,sans-serif}main{max-width:840px;margin:auto;padding:28px 22px 65px}header,summary{display:flex;align-items:center;gap:.7em}header{justify-content:space-between;border-bottom:1px solid #a5b4ac;padding-bottom:18px}a{color:#1b5547}h1{font-size:clamp(42px,8vw,76px);letter-spacing:-.065em;line-height:1;margin:54px 0 15px}p{max-width:65ch}h2{font-size:clamp(24px,4vw,38px);letter-spacing:-.04em;line-height:1.12;margin:14px 0 25px}h3{margin:30px 0 10px}.switch{display:flex;gap:8px;align-items:center;margin:26px 0 14px}.switch label{cursor:pointer;padding:8px}.panel{border:1px solid #bec9bd;border-top:4px solid #ab4931;background:#fffefa;padding:clamp(14px,4vw,32px);border-radius:5px}.panel.fixed{border-top-color:#236857}.status,small,.ordinal,code,pre{font-family:Consolas,monospace}.status{color:#94371f;letter-spacing:.12em;font-weight:bold}.fixed .status{color:#236857}.totals,.evidence{display:grid;grid-template-columns:1fr 1fr;gap:12px}.totals div,.evidence div{min-width:0;background:#f1f3ec;padding:16px}.totals strong{display:block;font-size:clamp(20px,4vw,32px)}details{border-top:1px solid #cdd6cc;padding:12px 0}summary{cursor:pointer;text-transform:capitalize;font-weight:600}summary:before{content:'▸'}details[open]>summary:before{content:'▾'}summary small{margin-left:auto;color:#4b6458}.ordinal{color:#65746e}code{overflow-wrap:anywhere}details>code{display:block;margin:12px 0}.evidence pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.panel>p{font-size:13px;margin:18px 0 0}main:has(#stale:checked) .fixed,main:has(#fixed:checked) .stale{display:none}@media(max-width:550px){.evidence{grid-template-columns:1fr}.switch{gap:0}}</style>
+<main><header><b>ShadowLab</b><a href="https://github.com/youssefelaboudy/ShadowLab">View source ↗</a></header><h1>Coupon replay</h1>
+<p>A shopper applies a 10% coupon, then doubles the quantity. Inspect the same five HTTP requests against two backend revisions.</p>
+<div class="switch" role="group" aria-label="Candidate revision"><input type="radio" name="rev" id="stale" checked><label for="stale">Seeded regression</label><input type="radio" name="rev" id="fixed"><label for="fixed">Verified fix</label></div><section class="panel stale"><div class="status">REGRESSION</div>
+  <h2>The coupon used the previous quantity.</h2>
+  <div class="totals"><div>Baseline total<strong>CAD 180.00</strong></div><div>Candidate total<strong>CAD 190.00</strong></div></div>
+  <h3>Request trace</h3><details ><summary><span class="ordinal">1</span> create cart <small>match</small></summary>
+  <code>POST /test/carts</code>
+  <div class="evidence"><div><b>Baseline · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${cart_id}&quot;
+}</pre></div><div><b>Candidate · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${cart_id}&quot;
+}</pre></div></div></details><details ><summary><span class="ordinal">2</span> add item <small>match</small></summary>
+  <code>POST /test/carts/${cart_id}/items</code>
+  <div class="evidence"><div><b>Baseline · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${item_id}&quot;
+}</pre></div><div><b>Candidate · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${item_id}&quot;
+}</pre></div></div></details><details ><summary><span class="ordinal">3</span> apply coupon <small>match</small></summary>
+  <code>POST /test/carts/${cart_id}/coupons</code>
+  <div class="evidence"><div><b>Baseline · HTTP 200</b><pre>{
+  &quot;applied&quot;: true,
+  &quot;notifications&quot;: 1
+}</pre></div><div><b>Candidate · HTTP 200</b><pre>{
+  &quot;applied&quot;: true,
+  &quot;notifications&quot;: 1
+}</pre></div></div></details><details ><summary><span class="ordinal">4</span> change quantity <small>match</small></summary>
+  <code>PATCH /test/carts/${cart_id}/items/${item_id}</code>
+  <div class="evidence"><div><b>Baseline · HTTP 200</b><pre>{
+  &quot;quantity&quot;: 2
+}</pre></div><div><b>Candidate · HTTP 200</b><pre>{
+  &quot;quantity&quot;: 2
+}</pre></div></div></details><details open><summary><span class="ordinal">5</span> summary <small>2 differences</small></summary>
+  <code>GET /test/carts/${cart_id}/summary</code>
+  <div class="evidence"><div><b>Baseline · HTTP 200</b><pre>{
+  &quot;subtotal&quot;: 20000,
+  &quot;discount&quot;: 2000,
+  &quot;total&quot;: 18000,
+  &quot;currency&quot;: &quot;CAD&quot;,
+  &quot;generatedAt&quot;: &quot;2026-01-15T10:00:00.000Z&quot;
+}</pre></div><div><b>Candidate · HTTP 200</b><pre>{
+  &quot;subtotal&quot;: 20000,
+  &quot;discount&quot;: 1000,
+  &quot;total&quot;: 19000,
+  &quot;currency&quot;: &quot;CAD&quot;,
+  &quot;generatedAt&quot;: &quot;2026-01-15T10:00:00.000Z&quot;
+}</pre></div></div></details>
+  <p>Fixture <code>carts-basic-v1</code> · Recorded <time>2026-11-16T05:03:31.003Z</time></p></section><section class="panel fixed"><div class="status">PASS</div>
+  <h2>The discount follows the quantity change.</h2>
+  <div class="totals"><div>Baseline total<strong>CAD 180.00</strong></div><div>Candidate total<strong>CAD 180.00</strong></div></div>
+  <h3>Request trace</h3><details ><summary><span class="ordinal">1</span> create cart <small>match</small></summary>
+  <code>POST /test/carts</code>
+  <div class="evidence"><div><b>Baseline · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${cart_id}&quot;
+}</pre></div><div><b>Candidate · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${cart_id}&quot;
+}</pre></div></div></details><details ><summary><span class="ordinal">2</span> add item <small>match</small></summary>
+  <code>POST /test/carts/${cart_id}/items</code>
+  <div class="evidence"><div><b>Baseline · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${item_id}&quot;
+}</pre></div><div><b>Candidate · HTTP 201</b><pre>{
+  &quot;id&quot;: &quot;${item_id}&quot;
+}</pre></div></div></details><details ><summary><span class="ordinal">3</span> apply coupon <small>match</small></summary>
+  <code>POST /test/carts/${cart_id}/coupons</code>
+  <div class="evidence"><div><b>Baseline · HTTP 200</b><pre>{
+  &quot;applied&quot;: true,
+  &quot;notifications&quot;: 1
+}</pre></div><div><b>Candidate · HTTP 200</b><pre>{
+  &quot;applied&quot;: true,
+  &quot;notifications&quot;: 1
+}</pre></div></div></details><details ><summary><span class="ordinal">4</span> change quantity <small>match</small></summary>
+  <code>PATCH /test/carts/${cart_id}/items/${item_id}</code>
+  <div class="evidence"><div><b>Baseline · HTTP 200</b><pre>{
+  &quot;quantity&quot;: 2
+}</pre></div><div><b>Candidate · HTTP 200</b><pre>{
+  &quot;quantity&quot;: 2
+}</pre></div></div></details><details open><summary><span class="ordinal">5</span> summary <small>match</small></summary>
+  <code>GET /test/carts/${cart_id}/summary</code>
+  <div class="evidence"><div><b>Baseline · HTTP 200</b><pre>{
+  &quot;subtotal&quot;: 20000,
+  &quot;discount&quot;: 2000,
+  &quot;total&quot;: 18000,
+  &quot;currency&quot;: &quot;CAD&quot;,
+  &quot;generatedAt&quot;: &quot;2026-01-15T10:00:00.000Z&quot;
+}</pre></div><div><b>Candidate · HTTP 200</b><pre>{
+  &quot;subtotal&quot;: 20000,
+  &quot;discount&quot;: 2000,
+  &quot;total&quot;: 18000,
+  &quot;currency&quot;: &quot;CAD&quot;,
+  &quot;generatedAt&quot;: &quot;2026-01-15T10:00:00.000Z&quot;
+}</pre></div></div></details>
+  <p>Fixture <code>carts-basic-v1</code> · Recorded <time>2026-11-16T05:03:31.075Z</time></p></section></main></html>

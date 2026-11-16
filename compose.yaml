@@ -1,0 +1,16 @@
+services:
+  baseline:
+    build: .
+    environment:
+      SHADOWLAB_MODE: baseline
+    ports: ["127.0.0.1:4101:4101"]
+    networks: [lab]
+  candidate:
+    build: .
+    environment:
+      SHADOWLAB_MODE: stale
+    ports: ["127.0.0.1:4102:4101"]
+    networks: [lab]
+networks:
+  lab:
+    internal: true
