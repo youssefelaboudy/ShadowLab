@@ -228,7 +228,7 @@ export function startApi(mode: Mode, port = 0, host = "127.0.0.1") {
       if (path === "/test/carts/" + cart + "/checkout" && method === "POST") {
         const units = rows(cart),
           discount = c.coupon
-            ? ((mode === "stale" ? Number(c.snapshot) : units) *
+            ? ((Number(c.snapshot)) *
                 defaults.unitPrice *
                 defaults.discountPercent) /
               100
@@ -249,7 +249,7 @@ export function startApi(mode: Mode, port = 0, host = "127.0.0.1") {
         const units = rows(cart),
           subtotal = units * defaults.unitPrice;
         const discount = c.coupon
-          ? ((mode === "stale" ? Number(c.snapshot) : units) *
+          ? ((Number(c.snapshot)) *
               defaults.unitPrice *
               defaults.discountPercent) /
             100
@@ -303,3 +303,4 @@ if (import.meta.main) {
     process.env.HOST || "127.0.0.1",
   );
 }
+
