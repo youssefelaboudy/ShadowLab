@@ -11,7 +11,11 @@ import {
 } from "node:fs/promises";
 import { dirname, basename, join } from "node:path";
 import { digest } from "../fixtures/manifest.ts";
-export async function publish(dir: string, files: Record<string, string>) {
+export async function publish(
+  dir: string,
+  files: Record<string, string>,
+  provenance?: Record<string, unknown>,
+) {
   await mkdir(dirname(dir), { recursive: true });
   const stage = await mkdtemp(join(dirname(dir), ".shadowlab-stage-"));
   try {
@@ -23,7 +27,12 @@ export async function publish(dir: string, files: Record<string, string>) {
     await writeFile(
       join(stage, "manifest.json"),
       JSON.stringify(
-        { format: "shadowlab/1", createdAt: new Date().toISOString(), hashes },
+        {
+          format: "shadowlab/1",
+          createdAt: new Date().toISOString(),
+          hashes,
+          provenance,
+        },
         null,
         2,
       ),

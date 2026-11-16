@@ -35,6 +35,10 @@ test("recorder stores sanitized original responses and scope-limited pseudonyms"
   const api = await startApi("fixed");
   try {
     const r = await recordEvidence(api.url, coupon);
+    assert.equal(r.provenance.fixture, coupon.fixture);
+    assert.equal(r.provenance.clock, coupon.clock);
+    assert.match(r.provenance.scenarioChecksum, /^[0-9a-f]{64}$/);
+    assert.match(r.provenance.fixtureChecksum, /^[0-9a-f]{64}$/);
     assert.equal(r.evidence[4].response.total, 18000);
     assert.equal(r.evidence[0].response.id, "${cart_1}");
     const masks = [];

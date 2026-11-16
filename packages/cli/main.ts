@@ -12,10 +12,21 @@ import { readScenario } from "../scenario/format.ts";
 import { defaults, fixtureHash } from "../fixtures/manifest.ts";
 import { flushTraces } from "../observability/tracing.ts";
 async function save(dir: string, r: Report) {
-  await publish(dir, {
-    "report.json": JSON.stringify(r, null, 2) + "\n",
-    "report.md": markdown(r),
-  });
+  await publish(
+    dir,
+    {
+      "report.json": JSON.stringify(r, null, 2) + "\n",
+      "report.md": markdown(r),
+    },
+    {
+      baselineCommit: r.baselineCommit,
+      candidateCommit: r.candidateCommit,
+      scenarioChecksum: r.checksum,
+      fixture: r.fixture,
+      fixtureChecksum: r.fixtureChecksum,
+      clock: r.clock,
+    },
+  );
   console.log(
     r.baseline +
       " → " +
@@ -124,10 +135,14 @@ async function main() {
     servers.push(base);
     if (command === "record") {
       const result = await recordEvidence(base.url, scenario);
-      await publish(out, {
-        "scenario.json": JSON.stringify(result.scenario, null, 2),
-        "evidence.json": JSON.stringify(result.evidence, null, 2),
-      });
+      await publish(
+        out,
+        {
+          "scenario.json": JSON.stringify(result.scenario, null, 2),
+          "evidence.json": JSON.stringify(result.evidence, null, 2),
+        },
+        result.provenance,
+      );
       console.log(join(out, "scenario.json"));
       return 0;
     }
