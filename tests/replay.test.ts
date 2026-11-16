@@ -158,3 +158,13 @@ test("timeout, oversized response and failed fixture handshake are infrastructur
     await new Promise<void>((r) => srv.close(() => r()));
   }
 });
+
+test("changing quantity before applying the coupon is a passing control", () =>
+  targets("stale", async (a, b) => {
+    const control = JSON.parse(
+      readFileSync("scenarios/quantity-before-coupon.json", "utf8"),
+    );
+    const report = await replay(control, a, b);
+    assert.equal(report.status, "PASS");
+    assert.equal(report.steps[4].candidate?.body.total, 18000);
+  }));
