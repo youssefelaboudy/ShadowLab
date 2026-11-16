@@ -46,6 +46,9 @@ try {
       id,
     ]);
     for (const a of rows) {
+      assert.ok(
+        a.created_at instanceof Date && Number.isFinite(a.created_at.getTime()),
+      );
       const result = await s3.send(
         new GetObjectCommand({
           Bucket: process.env.S3_BUCKET,

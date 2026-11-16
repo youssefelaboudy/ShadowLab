@@ -62,7 +62,7 @@ createServer(async (req, res) => {
       ).rows;
       const artifacts = (
         await db.query(
-          "SELECT run_id,format,checksum,uploaded FROM artifacts WHERE run_id=ANY($1::uuid[])",
+          "SELECT run_id,format,checksum,uploaded,created_at FROM artifacts WHERE run_id=ANY($1::uuid[])",
           [runs.slice(0, limit).map((r) => r.id)],
         )
       ).rows;

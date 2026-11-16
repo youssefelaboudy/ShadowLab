@@ -211,7 +211,20 @@ function captureRules(step: Step) {
 }
 export async function recordEvidence(url: string, input: unknown) {
   const r = await execute(url, validate(input), true);
-  return { scenario: r.recording!, evidence: r.recordedEvidence };
+  const recording = r.recording!;
+  return {
+    scenario: recording,
+    evidence: r.recordedEvidence,
+    provenance: {
+      sourceCommit: r.commit,
+      scenarioChecksum: createHash("sha256")
+        .update(canonical(recording))
+        .digest("hex"),
+      fixture: recording.fixture,
+      fixtureChecksum: fixtureHash(defaults),
+      clock: recording.clock,
+    },
+  };
 }
 export async function recordScenario(url: string, input: unknown) {
   return (await execute(url, validate(input), true)).recording!;
