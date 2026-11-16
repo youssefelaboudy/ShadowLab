@@ -2,7 +2,7 @@
   "name": "quantity-before-coupon",
   "version": 1,
   "fixture": "carts-basic-v1",
-  "clock": "2026-01-15T10:00:00Z",
+  "clock": "2026-01-15T10:00:00.000Z",
   "steps": [
     {
       "name": "create_cart",
@@ -47,3 +47,4 @@
   ],
   "ignore": ["$.generatedAt"]
 }
+
