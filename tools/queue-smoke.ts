@@ -15,7 +15,7 @@ try {
   await db.query("CREATE SCHEMA IF NOT EXISTS queue_test");
   await migrate();
   const s = await readScenario("scenarios/coupon-quantity.yaml");
-  const ids = await Promise.all([enqueue(s, "fixed"), enqueue(s, "error")]);
+  const ids: string[] = await Promise.all([enqueue(s, "fixed"), enqueue(s, "error")]);
   const [one, two] = await Promise.all([claim(), claim()]);
   assert.ok(one && two && one.id !== two.id);
   assert.ok(ids.includes(one.id) && ids.includes(two.id));
@@ -46,3 +46,4 @@ try {
 } finally {
   await db.end();
 }
+

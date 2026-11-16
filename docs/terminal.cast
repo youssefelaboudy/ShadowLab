@@ -1,6 +1,6 @@
-{"version":2,"width":92,"height":16,"timestamp":1794842144,"title":"ShadowLab · coupon replay"}
-[0.000057800000000000294,"o","$ node packages/cli/main.ts demo --out artifacts/demo\r\n"]
-[0.3537896,"o","baseline → stale   REGRESSION   summary\r\n"]
-[0.3539832,"o","  $.discount   2000 → 1000\r\n  $.total   18000 → 19000\r\n  artifacts\\demo\\stale\\report.md\r\n"]
-[0.3942036,"o","baseline → fixed   PASS   all steps match\r\n"]
-[0.394702,"o","  artifacts\\demo\\fixed\\report.md\r\n"]
+{"version":2,"width":92,"height":16,"timestamp":1794843859,"title":"ShadowLab · coupon replay"}
+[0.00003289999999999793,"o","$ node packages/cli/main.ts demo\r\n"]
+[0.8784752,"o","baseline → stale   REGRESSION   summary\r\n"]
+[0.8785679,"o","  $.discount   2000 → 1000\r\n  $.total   18000 → 19000\r\n  artifacts\\ba4aba1f-bfe0-434f-888f-fd10ecd1492c\\stale\\report.md\r\n"]
+[1.0885169000000001,"o","baseline → fixed   PASS   all steps match\r\n"]
+[1.0886367000000001,"o","  artifacts\\ba4aba1f-bfe0-434f-888f-fd10ecd1492c\\fixed\\report.md\r\n"]

@@ -6,29 +6,29 @@
       "revision": "fixed",
       "runs": 10,
       "expected": "PASS",
-      "p50_ms": 20,
-      "p95_ms": 91
+      "p50_ms": 15,
+      "p95_ms": 69
     },
     {
       "revision": "stale",
       "runs": 10,
       "expected": "REGRESSION",
-      "p50_ms": 20,
-      "p95_ms": 33
+      "p50_ms": 12,
+      "p95_ms": 23
     },
     {
       "revision": "missing",
       "runs": 10,
       "expected": "REGRESSION",
-      "p50_ms": 16,
-      "p95_ms": 24
+      "p50_ms": 11,
+      "p95_ms": 16
     },
     {
       "revision": "error",
       "runs": 10,
       "expected": "REGRESSION",
-      "p50_ms": 17,
-      "p95_ms": 23
+      "p50_ms": 11,
+      "p95_ms": 14
     }
   ]
 }

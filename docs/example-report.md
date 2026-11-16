@@ -23,4 +23,8 @@ Money amounts are integer CAD cents.
 
 Fixture: `carts-basic-v1` · Clock: `2026-01-15T10:00:00.000Z`
 
-Scenario SHA-256: `24cf28030ba023dc2efa581e0e5e1fee4e9e866245f7782321d339fae74f9c2f`
+Baseline commit: `aef63ebd83ab6ec9f43dda5762f598c2153bfdff` · Candidate commit: `aef63ebd83ab6ec9f43dda5762f598c2153bfdff`
+
+Run: 2026-11-16T15:44:19.264Z → 2026-11-16T15:44:19.313Z
+
+Scenario SHA-256: `8338aa6f946e1fc585592c8cf7da42ea06e880aa3a3aba94d4f3a10dc6eed93a`

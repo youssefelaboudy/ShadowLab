@@ -1,0 +1,271 @@
+{
+  "scenario": "coupon-quantity-yaml",
+  "scenarioVersion": 1,
+  "definition": {
+    "name": "coupon-quantity-yaml",
+    "version": 1,
+    "fixture": "carts-basic-v1",
+    "clock": "2026-01-15T10:00:00.000Z",
+    "steps": [
+      {
+        "name": "create_cart",
+        "method": "POST",
+        "path": "/test/carts",
+        "json": {},
+        "captures": {
+          "cart_id": {
+            "from": "response.body",
+            "path": "$.id"
+          }
+        }
+      },
+      {
+        "name": "add_item",
+        "method": "POST",
+        "path": "/test/carts/${cart_id}/items",
+        "json": {
+          "sku": "SHOE-001",
+          "quantity": 1
+        },
+        "captures": {
+          "item_id": {
+            "from": "response.body",
+            "path": "$.id"
+          }
+        }
+      },
+      {
+        "name": "apply_coupon",
+        "method": "POST",
+        "path": "/test/carts/${cart_id}/coupons",
+        "json": {
+          "code": "SAVE10"
+        }
+      },
+      {
+        "name": "change_quantity",
+        "method": "PATCH",
+        "path": "/test/carts/${cart_id}/items/${item_id}",
+        "json": {
+          "quantity": 2
+        }
+      },
+      {
+        "name": "summary",
+        "method": "GET",
+        "path": "/test/carts/${cart_id}/summary",
+        "assertions": [
+          {
+            "path": "$.currency",
+            "equals": "CAD"
+          }
+        ]
+      }
+    ],
+    "ignore": [
+      "$.generatedAt"
+    ],
+    "exact": [
+      "$.subtotal",
+      "$.discount",
+      "$.total"
+    ],
+    "sets": {}
+  },
+  "baselineCommit": "aef63ebd83ab6ec9f43dda5762f598c2153bfdff",
+  "candidateCommit": "aef63ebd83ab6ec9f43dda5762f598c2153bfdff",
+  "fixtureChecksum": "93e7d560f0cc6f63a9593671e67be40a4b4264813380008d925518bd76b318a8",
+  "durations": {
+    "baseline": [
+      3.93,
+      1.81,
+      1.64,
+      1.6,
+      1.65
+    ],
+    "candidate": [
+      2.41,
+      1.59,
+      1.29,
+      1.1,
+      0.93
+    ]
+  },
+  "checksum": "e0fb4870127918e9c5917bd70dd1f1bc9a409ef5426bbb6a50e992ad3bb5f4ab",
+  "fixture": "carts-basic-v1",
+  "clock": "2026-01-15T10:00:00.000Z",
+  "startedAt": "2026-11-16T15:44:18.118Z",
+  "completedAt": "2026-11-16T15:44:18.167Z",
+  "commit": null,
+  "baseline": "baseline",
+  "candidate": "stale",
+  "status": "REGRESSION",
+  "first": "summary",
+  "ignore": [
+    "$.generatedAt"
+  ],
+  "steps": [
+    {
+      "ordinal": 1,
+      "name": "create_cart",
+      "request": {
+        "method": "POST",
+        "path": "/test/carts",
+        "json": {}
+      },
+      "baseline": {
+        "status": 201,
+        "body": {
+          "id": "${cart_id}",
+          "entity": {
+            "id": "${cart_id}"
+          }
+        }
+      },
+      "candidate": {
+        "status": 201,
+        "body": {
+          "id": "${cart_id}",
+          "entity": {
+            "id": "${cart_id}"
+          }
+        }
+      },
+      "blocked": false,
+      "differences": []
+    },
+    {
+      "ordinal": 2,
+      "name": "add_item",
+      "request": {
+        "method": "POST",
+        "path": "/test/carts/${cart_id}/items",
+        "json": {
+          "sku": "SHOE-001",
+          "quantity": 1
+        }
+      },
+      "baseline": {
+        "status": 201,
+        "body": {
+          "id": "${item_id}"
+        }
+      },
+      "candidate": {
+        "status": 201,
+        "body": {
+          "id": "${item_id}"
+        }
+      },
+      "blocked": false,
+      "differences": []
+    },
+    {
+      "ordinal": 3,
+      "name": "apply_coupon",
+      "request": {
+        "method": "POST",
+        "path": "/test/carts/${cart_id}/coupons",
+        "json": {
+          "code": "SAVE10"
+        }
+      },
+      "baseline": {
+        "status": 200,
+        "body": {
+          "applied": true,
+          "notifications": 1
+        }
+      },
+      "candidate": {
+        "status": 200,
+        "body": {
+          "applied": true,
+          "notifications": 1
+        }
+      },
+      "blocked": false,
+      "differences": []
+    },
+    {
+      "ordinal": 4,
+      "name": "change_quantity",
+      "request": {
+        "method": "PATCH",
+        "path": "/test/carts/${cart_id}/items/${item_id}",
+        "json": {
+          "quantity": 2
+        }
+      },
+      "baseline": {
+        "status": 200,
+        "body": {
+          "quantity": 2
+        }
+      },
+      "candidate": {
+        "status": 200,
+        "body": {
+          "quantity": 2
+        }
+      },
+      "blocked": false,
+      "differences": []
+    },
+    {
+      "ordinal": 5,
+      "name": "summary",
+      "request": {
+        "method": "GET",
+        "path": "/test/carts/${cart_id}/summary"
+      },
+      "baseline": {
+        "status": 200,
+        "body": {
+          "subtotal": 20000,
+          "discount": 2000,
+          "total": 18000,
+          "currency": "CAD",
+          "items": [
+            {
+              "id": "${item_id}",
+              "quantity": 2
+            }
+          ],
+          "generatedAt": "2026-01-15T10:00:00.000Z"
+        }
+      },
+      "candidate": {
+        "status": 200,
+        "body": {
+          "subtotal": 20000,
+          "discount": 1000,
+          "total": 19000,
+          "currency": "CAD",
+          "items": [
+            {
+              "id": "${item_id}",
+              "quantity": 2
+            }
+          ],
+          "generatedAt": "2026-01-15T10:00:00.000Z"
+        }
+      },
+      "blocked": false,
+      "differences": [
+        {
+          "path": "$.discount",
+          "baseline": 2000,
+          "candidate": 1000,
+          "reason": "value"
+        },
+        {
+          "path": "$.total",
+          "baseline": 18000,
+          "candidate": 19000,
+          "reason": "value"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,147 @@
+{
+  "scenario": "summary-contract",
+  "scenarioVersion": 1,
+  "definition": {
+    "name": "summary-contract",
+    "version": 1,
+    "fixture": "carts-basic-v1",
+    "clock": "2026-01-15T10:00:00.000Z",
+    "steps": [
+      {
+        "name": "cart",
+        "method": "POST",
+        "path": "/test/carts",
+        "captures": {
+          "cart_id": {
+            "from": "response.body",
+            "path": "$.id"
+          }
+        }
+      },
+      {
+        "name": "empty_summary",
+        "method": "GET",
+        "path": "/test/carts/${cart_id}/summary",
+        "assertions": [
+          {
+            "path": "$.currency",
+            "equals": "CAD"
+          }
+        ]
+      }
+    ],
+    "ignore": [
+      "$.generatedAt"
+    ],
+    "exact": [
+      "$.total"
+    ],
+    "sets": {
+      "$.items": "id"
+    }
+  },
+  "baselineCommit": "aef63ebd83ab6ec9f43dda5762f598c2153bfdff",
+  "candidateCommit": "aef63ebd83ab6ec9f43dda5762f598c2153bfdff",
+  "fixtureChecksum": "93e7d560f0cc6f63a9593671e67be40a4b4264813380008d925518bd76b318a8",
+  "durations": {
+    "baseline": [
+      0.85,
+      0.79
+    ],
+    "candidate": [
+      1.55,
+      0.78
+    ]
+  },
+  "checksum": "d9c9cc03acacb700194df83ffe7f9114b9731966d4f6e3925132eb681f7d5ffd",
+  "fixture": "carts-basic-v1",
+  "clock": "2026-01-15T10:00:00.000Z",
+  "startedAt": "2026-11-16T15:44:18.413Z",
+  "completedAt": "2026-11-16T15:44:18.422Z",
+  "commit": null,
+  "baseline": "baseline",
+  "candidate": "missing",
+  "status": "REGRESSION",
+  "first": "empty_summary",
+  "ignore": [
+    "$.generatedAt"
+  ],
+  "steps": [
+    {
+      "ordinal": 1,
+      "name": "cart",
+      "request": {
+        "method": "POST",
+        "path": "/test/carts"
+      },
+      "baseline": {
+        "status": 201,
+        "body": {
+          "id": "${cart_id}",
+          "entity": {
+            "id": "${cart_id}"
+          }
+        }
+      },
+      "candidate": {
+        "status": 201,
+        "body": {
+          "id": "${cart_id}",
+          "entity": {
+            "id": "${cart_id}"
+          }
+        }
+      },
+      "blocked": false,
+      "differences": []
+    },
+    {
+      "ordinal": 2,
+      "name": "empty_summary",
+      "request": {
+        "method": "GET",
+        "path": "/test/carts/${cart_id}/summary"
+      },
+      "baseline": {
+        "status": 200,
+        "body": {
+          "subtotal": 0,
+          "discount": 0,
+          "total": 0,
+          "currency": "CAD",
+          "items": [],
+          "generatedAt": "2026-01-15T10:00:00.000Z"
+        }
+      },
+      "candidate": {
+        "status": 200,
+        "body": {
+          "subtotal": 0,
+          "discount": 0,
+          "total": 0,
+          "items": [],
+          "generatedAt": "2026-01-15T10:00:00.000Z"
+        }
+      },
+      "blocked": false,
+      "differences": [
+        {
+          "path": "$.currency",
+          "baseline": "CAD",
+          "candidate": {
+            "missing": true
+          },
+          "reason": "presence"
+        },
+        {
+          "path": "$.currency",
+          "baseline": "CAD",
+          "candidate": {
+            "missing": true
+          },
+          "reason": "assertion"
+        }
+      ]
+    }
+  ]
+}
