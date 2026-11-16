@@ -72,30 +72,30 @@
     ],
     "sets": {}
   },
-  "baselineCommit": "aef63ebd83ab6ec9f43dda5762f598c2153bfdff",
-  "candidateCommit": "2268daccb2ba0f67fa45adae72a3b03f7f18e8d0",
+  "baselineCommit": "4b35c9db76d2bd20dc24635590c855924a3a57c0",
+  "candidateCommit": "769deccc2cf05c17c6051d9866dfcfb24ace0710",
   "fixtureChecksum": "93e7d560f0cc6f63a9593671e67be40a4b4264813380008d925518bd76b318a8",
   "durations": {
     "baseline": [
-      4.71,
-      2.06,
-      1.72,
-      1.89,
-      2.4
+      6.18,
+      3.12,
+      3.03,
+      2.94,
+      2.71
     ],
     "candidate": [
-      3.38,
-      2.58,
-      1.88,
-      1.35,
-      1.3
+      6.18,
+      3.95,
+      4.51,
+      5.06,
+      2.53
     ]
   },
   "checksum": "e0fb4870127918e9c5917bd70dd1f1bc9a409ef5426bbb6a50e992ad3bb5f4ab",
   "fixture": "carts-basic-v1",
   "clock": "2026-01-15T10:00:00.000Z",
-  "startedAt": "2026-11-16T15:44:14.844Z",
-  "completedAt": "2026-11-16T15:44:14.912Z",
+  "startedAt": "2026-11-16T15:45:54.093Z",
+  "completedAt": "2026-11-16T15:45:54.205Z",
   "commit": null,
   "baseline": "baseline",
   "candidate": "baseline",

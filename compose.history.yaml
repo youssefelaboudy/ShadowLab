@@ -5,7 +5,7 @@ x-app: &app
       SHADOWLAB_COMMIT: ${SHADOWLAB_COMMIT:-}
   environment: &env
     DATABASE_URL: postgres://shadowlab:local-history@postgres/shadowlab
-    S3_ENDPOINT: http://objects:9000
+    S3_ENDPOINT: http://objects:8333
     AWS_ACCESS_KEY_ID: shadowlab-local
     AWS_SECRET_ACCESS_KEY: shadowlab-local-secret
     S3_BUCKET: shadowlab
@@ -28,11 +28,12 @@ services:
       retries: 25
     networks: [storage]
   objects:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    command: server /data
+    image: chrislusf/seaweedfs:4.54@sha256:4b42c212543a0acd4c0e675215ecdcaf62a186ef98def76c7e12701871222d15
+    command: mini -dir=/data -ip=objects -ip.bind=0.0.0.0
     environment:
-      MINIO_ROOT_USER: shadowlab-local
-      MINIO_ROOT_PASSWORD: shadowlab-local-secret
+      AWS_ACCESS_KEY_ID: shadowlab-local
+      AWS_SECRET_ACCESS_KEY: shadowlab-local-secret
+      S3_BUCKET: shadowlab
     volumes: [history-objects:/data]
     networks: [storage]
   worker:

@@ -37,13 +37,14 @@ export async function processOne() {
 }
 if (import.meta.main) {
   await migrate();
-  await initBucket();
+  let storageReady = false;
   let stop = false;
   process.on("SIGTERM", () => {
     stop = true;
   });
   while (!stop) {
     try {
+      if (!storageReady) { await initBucket(); storageReady = true; }
       const ran = await processOne();
       const uploaded = await uploadOne();
       if (!ran && !uploaded) await sleep(300);

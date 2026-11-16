@@ -29,6 +29,14 @@ Each explicit output directory must be fresh. Omit the output option for a uniqu
 
 The faulty revision saves the item count when the coupon is applied. The repaired revision reads the current quantity when building the summary. Both totals balance internally. Detecting this defect requires comparing the business outcome across versions.
 
+## Compare two Git commits
+
+The tagged baseline and candidate contain different source code. A replay from fresh checkouts first diverges at the fifth request. Both commit SHAs and the fixture checksum are in the report. [Actual Git comparison](docs/git-replay/report.md) · [Commands and reusable GitHub Action](docs/revisions-and-ci.md)
+
+## Run the history dashboard
+
+Run `docker compose -f compose.history.yaml up --build --wait` and open `http://127.0.0.1:4200`. Queue a replay, inspect grouped regressions, explore daily outcomes and see which response fields each route covered. PostgreSQL coordinates two workers and indexes immutable reports in a SeaweedFS S3 bucket. The hosted dashboard is a read-only snapshot of six real replays. [Operations and retention](docs/architecture.md) · [Three-minute demo](docs/demo-script.md)
+
 ## How replay works
 
 1. **Validate the scenario.** The JSON and YAML contracts require a fixture, UTC clock, ordered steps and known demo routes. Variables must be captured before use.
@@ -69,7 +77,7 @@ This implementation supports a single owned commerce API and sequential JSON wor
 
 ## Measured replay evidence
 
-The synthetic benchmark repeated the five-step coupon scenario ten times against each of four revisions. All 30 injected failures first diverged at the summary. All ten corrected runs matched. Each revision produced identical sanitized step evidence across its ten fresh fixture pairs. Median local replay times ranged from 16 to 20 ms on Windows with Node 26.12.1. Timings include both HTTP replays and fixture creation and cleanup on already-running servers. [Benchmark results](docs/benchmark.json) · [Benchmark code](tools/benchmark.ts)
+The synthetic benchmark repeated the five-step coupon scenario ten times against each of four revisions. All 30 injected failures first diverged at the summary. All ten corrected runs matched. Each revision produced identical sanitized step evidence across its ten fresh fixture pairs. Median local replay times ranged from 11 to 15 ms on Windows with Node 26.12.1. Timings include both HTTP replays and fixture creation and cleanup on already-running servers. [Benchmark results](docs/benchmark.json) · [Benchmark code](tools/benchmark.ts)
 
 A second saved scenario moves the quantity change ahead of the coupon. Both revisions then return CAD 180. The passing control isolates the order dependency. [Control scenario](scenarios/quantity-before-coupon.json)
 
