@@ -29,3 +29,9 @@ CREATE TABLE IF NOT EXISTS artifacts (
  run_id uuid REFERENCES runs ON DELETE CASCADE, format text, object_key text UNIQUE, checksum text NOT NULL,
  content text NOT NULL, uploaded boolean NOT NULL DEFAULT false, PRIMARY KEY(run_id,format)
 );
+-- Older installations committed the artifacts in the same transaction as the run.
+ALTER TABLE artifacts ADD COLUMN IF NOT EXISTS created_at timestamptz;
+UPDATE artifacts a SET created_at=r.completed_at
+FROM runs r WHERE r.id=a.run_id AND a.created_at IS NULL;
+ALTER TABLE artifacts ALTER COLUMN created_at SET DEFAULT now();
+ALTER TABLE artifacts ALTER COLUMN created_at SET NOT NULL;

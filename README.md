@@ -71,7 +71,7 @@ Replay exits **0** for a match, **1** for a regression, and **2** for invalid in
 
 ## Verification and scope
 
-The local Node 26.12.1 suite passed 25 tests, with **98.65% core line coverage** and **90.50% branch coverage**. The coverage job publishes its own measurements for every checkout. The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
+The local Node 26.12.1 suite passed 25 tests, with **98.68% core line coverage** and **90.50% branch coverage**. The coverage job publishes its own measurements for every checkout. The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
 
 This implementation supports a single owned commerce API and sequential JSON workflows. SQLite keeps the one-command demo self-contained. The Compose services use a shared loopback namespace with external networking disabled. Notifications are local events. The runner accepts literal IPv4 loopback origins, rejects redirects, and caps each response at 64 KiB and four seconds. The public dashboard displays exported runs. The optional local React dashboard uses PostgreSQL, two workers and S3-compatible artifact storage. Rebuild it after changing the scenario using the demo and export commands above.
 
@@ -84,4 +84,3 @@ The synthetic benchmark repeated the five-step coupon scenario ten times against
 A second saved scenario moves the quantity change ahead of the coupon. Both revisions then return CAD 180. The passing control isolates the order dependency. [Control scenario](scenarios/quantity-before-coupon.json)
 
 Run `node tools/benchmark.ts` to repeat the measurements. Use `asciinema play docs/terminal.cast` to view the captured CLI run. The browser report above displays its underlying requests and responses. [Recorded terminal session](docs/terminal.cast)
-
