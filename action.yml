@@ -1,0 +1,32 @@
+name: ShadowLab replay
+description: Compare a stateful scenario against two test-mode HTTP servers and annotate regressions.
+inputs:
+  scenario:
+    description: Path to a JSON or YAML scenario
+    required: true
+  targets:
+    description: Path to the test-mode loopback target manifest
+    required: true
+  out:
+    description: Fresh directory for immutable evidence
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "24"
+    - shell: bash
+      env:
+        TOOL: ${{ github.action_path }}
+        SCENARIO: ${{ inputs.scenario }}
+        TARGETS: ${{ inputs.targets }}
+        OUT: ${{ inputs.out }}
+      run: |
+        npm ci --prefix "$TOOL" --omit=dev --ignore-scripts
+        rc=0
+        node "$TOOL/packages/cli/main.ts" replay --scenario "$SCENARIO" --targets "$TARGETS" --out "$OUT" || rc=$?
+        if [ "$rc" -eq 1 ]; then
+          node "$TOOL/tools/annotate.ts" "$OUT/report.json" "$SCENARIO"
+        fi
+        exit "$rc"

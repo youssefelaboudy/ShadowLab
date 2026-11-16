@@ -4,15 +4,26 @@ export type Step = {
   path: string;
   json?: Record<string, unknown>;
   capture?: string;
+  captures?: Record<string, { from: "response.body"; path: string }>;
+  assertions?: { path: string; equals: string | number | boolean | null }[];
+  timeout_ms?: number;
+  poll?: {
+    path: string;
+    equals: string | number | boolean;
+    max_attempts: number;
+    interval_ms: number;
+  };
   assert?: Record<string, unknown>;
 };
 export type Scenario = {
   name: string;
-  version: 1;
+  version: number;
   fixture: string;
   clock: string;
   steps: Step[];
   ignore: string[];
+  exact?: string[];
+  sets?: Record<string, string>;
 };
 export const fixture = "carts-basic-v1";
 export const identifier = /^[a-z][a-z0-9_]{0,39}$/;
@@ -41,6 +52,18 @@ export const routes = [
     fields: [],
   },
 ];
+routes.push(
+  {
+    method: "GET",
+    path: new RegExp("^/test/carts/" + ref + "/settled$"),
+    fields: [],
+  },
+  {
+    method: "POST",
+    path: new RegExp("^/test/carts/" + ref + "/checkout$"),
+    fields: [],
+  },
+);
 export function object(x: unknown): x is Record<string, unknown> {
   return x !== null && typeof x === "object" && !Array.isArray(x);
 }
@@ -53,13 +76,23 @@ function check(ok: unknown, message: string): asserts ok {
 export function validate(input: unknown): Scenario {
   check(
     object(input) &&
-      keys(input, ["name", "version", "fixture", "clock", "steps", "ignore"]),
+      keys(input, [
+        "name",
+        "version",
+        "fixture",
+        "clock",
+        "steps",
+        "ignore",
+        "exact",
+        "sets",
+      ]),
     "Invalid scenario shape",
   );
   check(
     typeof input.name === "string" &&
       /^[a-z][a-z0-9-]{0,63}$/.test(input.name) &&
-      input.version === 1 &&
+      Number.isSafeInteger(input.version) &&
+      Number(input.version) > 0 &&
       input.fixture === fixture,
     "Invalid name, version or fixture",
   );
@@ -80,12 +113,44 @@ export function validate(input: unknown): Scenario {
       input.steps.length <= 100,
     "Expected 1–100 steps",
   );
+  const semanticPath = (x: unknown) =>
+    typeof x === "string" &&
+    /^\$\.(?:id|entity\.id|subtotal|discount|total|currency|ready|quantity|notifications|applied|error)$/.test(
+      x,
+    );
+  check(
+    !input.exact ||
+      (Array.isArray(input.exact) &&
+        input.exact.every((k) =>
+          ["$.subtotal", "$.discount", "$.total"].includes(k),
+        )),
+    "Invalid exact path",
+  );
+  check(
+    !input.sets ||
+      (object(input.sets) &&
+        Object.entries(input.sets).every(
+          ([k, v]) => k === "$.items" && v === "id",
+        )),
+    "Invalid ordered set",
+  );
   const names = new Set(),
     bindings = new Set();
   for (const s of input.steps) {
     check(
       object(s) &&
-        keys(s, ["name", "method", "path", "json", "capture", "assert"]),
+        keys(s, [
+          "name",
+          "method",
+          "path",
+          "json",
+          "capture",
+          "assert",
+          "captures",
+          "assertions",
+          "timeout_ms",
+          "poll",
+        ]),
       "Invalid step shape",
     );
     check(
@@ -127,6 +192,61 @@ export function validate(input: unknown): Scenario {
         "Invalid capture",
       );
       bindings.add(s.capture);
+    }
+    if (s.captures !== undefined) {
+      check(
+        !s.capture && object(s.captures) && Object.keys(s.captures).length > 0,
+        "Invalid captures",
+      );
+      for (const [key, rule] of Object.entries(s.captures)) {
+        check(
+          identifier.test(key) &&
+            !bindings.has(key) &&
+            object(rule) &&
+            keys(rule, ["from", "path"]) &&
+            rule.from === "response.body" &&
+            ["$.id", "$.entity.id"].includes(String(rule.path)),
+          "Invalid capture path",
+        );
+        bindings.add(key);
+      }
+    }
+    if (s.assertions !== undefined)
+      check(
+        Array.isArray(s.assertions) &&
+          s.assertions.every(
+            (r) =>
+              object(r) &&
+              keys(r, ["path", "equals"]) &&
+              semanticPath(r.path) &&
+              (r.equals === null ||
+                ["number", "string", "boolean"].includes(typeof r.equals)),
+          ),
+        "Invalid path assertion",
+      );
+    if (s.timeout_ms !== undefined)
+      check(
+        Number.isInteger(s.timeout_ms) &&
+          Number(s.timeout_ms) > 0 &&
+          Number(s.timeout_ms) <= 10000,
+        "Invalid timeout",
+      );
+    if (s.poll !== undefined) {
+      const p = s.poll;
+      check(
+        s.method === "GET" &&
+          object(p) &&
+          keys(p, ["path", "equals", "max_attempts", "interval_ms"]) &&
+          semanticPath(p.path) &&
+          ["string", "number", "boolean"].includes(typeof p.equals) &&
+          Number.isInteger(p.max_attempts) &&
+          Number(p.max_attempts) >= 1 &&
+          Number(p.max_attempts) <= 10 &&
+          Number.isInteger(p.interval_ms) &&
+          Number(p.interval_ms) >= 1 &&
+          Number(p.interval_ms) <= 500,
+        "Invalid poll",
+      );
     }
     if (s.assert !== undefined)
       check(

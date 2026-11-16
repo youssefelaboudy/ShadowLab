@@ -1,0 +1,36 @@
+name: coupon-quantity-yaml
+version: 1
+fixture: carts-basic-v1
+clock: "2026-01-15T10:00:00Z"
+steps:
+  - name: create_cart
+    request: { method: POST, path: /test/carts, json: {} }
+    capture:
+      cart_id: { from: response.body, path: $.id }
+  - name: add_item
+    request:
+      method: POST
+      path: /test/carts/${cart_id}/items
+      json: { sku: SHOE-001, quantity: 1 }
+    capture:
+      item_id: { from: response.body, path: $.id }
+  - name: apply_coupon
+    request:
+      method: POST
+      path: /test/carts/${cart_id}/coupons
+      json: { code: SAVE10 }
+  - name: change_quantity
+    request:
+      method: PATCH
+      path: /test/carts/${cart_id}/items/${item_id}
+      json: { quantity: 2 }
+  - name: summary
+    request:
+      method: GET
+      path: /test/carts/${cart_id}/summary
+    assertions:
+      - { path: $.currency, equals: CAD }
+comparison:
+  ignore_paths: ["$.generatedAt"]
+  compare_numeric_exactly: ["$.subtotal", "$.discount", "$.total"]
+

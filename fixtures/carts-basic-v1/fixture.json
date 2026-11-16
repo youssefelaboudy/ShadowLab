@@ -1,0 +1,8 @@
+{
+  "id": "carts-basic-v1",
+  "sku": "SHOE-001",
+  "unitPrice": 10000,
+  "currency": "CAD",
+  "coupon": "SAVE10",
+  "discountPercent": 10
+}

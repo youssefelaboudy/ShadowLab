@@ -36,8 +36,17 @@ function panel(r: Report) {
 }
 const html = `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ShadowLab · Replay report</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f6f5ef;color:#142d2a;font:16px/1.55 "Segoe UI",system-ui,sans-serif}main{max-width:840px;margin:auto;padding:28px 22px 65px}header,summary{display:flex;align-items:center;gap:.7em}header{justify-content:space-between;border-bottom:1px solid #a5b4ac;padding-bottom:18px}a{color:#1b5547}h1{font-size:clamp(42px,8vw,76px);letter-spacing:-.065em;line-height:1;margin:54px 0 15px}p{max-width:65ch}h2{font-size:clamp(24px,4vw,38px);letter-spacing:-.04em;line-height:1.12;margin:14px 0 25px}h3{margin:30px 0 10px}.switch{display:flex;gap:8px;align-items:center;margin:26px 0 14px}.switch label{cursor:pointer;padding:8px}.panel{border:1px solid #bec9bd;border-top:4px solid #ab4931;background:#fffefa;padding:clamp(14px,4vw,32px);border-radius:5px}.panel.fixed{border-top-color:#236857}.status,small,.ordinal,code,pre{font-family:Consolas,monospace}.status{color:#94371f;letter-spacing:.12em;font-weight:bold}.fixed .status{color:#236857}.totals,.evidence{display:grid;grid-template-columns:1fr 1fr;gap:12px}.totals div,.evidence div{min-width:0;background:#f1f3ec;padding:16px}.totals strong{display:block;font-size:clamp(20px,4vw,32px)}details{border-top:1px solid #cdd6cc;padding:12px 0}summary{cursor:pointer;text-transform:capitalize;font-weight:600}summary:before{content:'▸'}details[open]>summary:before{content:'▾'}summary small{margin-left:auto;color:#4b6458}.ordinal{color:#65746e}code{overflow-wrap:anywhere}details>code{display:block;margin:12px 0}.evidence pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}.panel>p{font-size:13px;margin:18px 0 0}main:has(#stale:checked) .fixed,main:has(#fixed:checked) .stale{display:none}@media(max-width:550px){.evidence{grid-template-columns:1fr}.switch{gap:0}}</style>
-<main><header><b>ShadowLab</b><a href="https://github.com/youssefelaboudy/ShadowLab">View source ↗</a></header><h1>Coupon replay</h1>
+<main><header><b>ShadowLab</b><div><a href="./history/">Run history</a> · <a href="https://github.com/youssefelaboudy/ShadowLab">View source ↗</a></div></header><h1>Coupon replay</h1>
 <p>A shopper applies a 10% coupon, then doubles the quantity. Inspect the same five HTTP requests against two backend revisions.</p>
 <div class="switch" role="group" aria-label="Candidate revision"><input type="radio" name="rev" id="stale" checked><label for="stale">Seeded regression</label><input type="radio" name="rev" id="fixed"><label for="fixed">Verified fix</label></div>${reports.map(panel).join("")}</main></html>`;
-await mkdir("docs", { recursive: true });
-await writeFile("docs/index.html", html);
+const destination = process.argv[3] || "docs";
+await mkdir(destination, { recursive: true });
+await writeFile(
+  destination + "/index.html",
+  destination === "docs"
+    ? html
+    : html.replace(
+        'href="./history/"',
+        'href="https://youssefelaboudy.github.io/ShadowLab/history/"',
+      ),
+);

@@ -4,7 +4,7 @@
 
 A shopper adds a CAD 100 item, applies a 10% coupon, then doubles the quantity. Every request succeeds. The candidate charges **CAD 190**. The baseline charges **CAD 180**. ShadowLab replays the journey against both revisions and traces the extra CAD 10 to the summary response.
 
-[Explore the recorded replay](https://youssefelaboudy.github.io/ShadowLab/) · [Read the actual diff](docs/example-report.md) · [Inspect the five-step scenario](scenarios/coupon-quantity.json)
+[Browse replay history](https://youssefelaboudy.github.io/ShadowLab/history/) · [Architecture and operations](docs/architecture.md) · [Explore the recorded replay](https://youssefelaboudy.github.io/ShadowLab/) · [Read the actual diff](docs/example-report.md) · [Inspect the five-step scenario](scenarios/coupon-quantity.json)
 
 ![ShadowLab showing a CAD 10 difference between the baseline and candidate](docs/replay-preview.png)
 
@@ -13,10 +13,11 @@ A shopper adds a CAD 100 item, applies a 10% coupon, then doubles the quantity. 
 From a clean checkout with Node.js 24.12 or newer:
 
 ```sh
+npm ci
 npm run demo -- --out artifacts/demo
 ```
 
-The demo starts three temporary HTTP servers and runs the same scenario twice. Open `artifacts/demo/stale/report.md` for the failed comparison and `artifacts/demo/fixed/report.md` for the repair. Both directories contain machine-readable JSON. On Windows, double-click **Open Demo.cmd** to run the comparison and open the saved report viewer.
+Each explicit output directory must be fresh. Omit the output option for a unique run directory on every invocation. The demo starts three temporary HTTP servers and runs the same scenario twice. Open `artifacts/demo/stale/report.md` for the failed comparison and `artifacts/demo/fixed/report.md` for the repair. Both directories contain machine-readable JSON. On Windows, double-click **Open Demo.cmd** to run the comparison and open the saved report viewer.
 
 ## What happens at step five
 
@@ -30,7 +31,7 @@ The faulty revision saves the item count when the coupon is applied. The repaire
 
 ## How replay works
 
-1. **Validate the scenario.** The JSON contract requires a fixture, UTC clock, ordered steps and known demo routes. Variables must be captured before use.
+1. **Validate the scenario.** The JSON and YAML contracts require a fixture, UTC clock, ordered steps and known demo routes. Variables must be captured before use.
 2. **Create isolated state.** Each fixture handshake allocates a fresh in-memory SQLite database, clock and local notification sink. The runner releases that lease in a cleanup block. Overlapping replays have separate databases.
 3. **Resolve identities independently.** Each revision creates random cart and item IDs. The runner substitutes that revision’s IDs into later paths and represents the IDs by their capture names in evidence.
 4. **Compare the responses.** Status codes, known response fields, missing values, currency assertions and integer-cent totals are compared. A configured timestamp can be ignored. Array ordering is significant in the comparator.
@@ -45,7 +46,7 @@ npm run coverage
 node tools/export.ts artifacts/demo
 ```
 
-Recording is opt-in on the owned synthetic API. Successful requests become replayable templates with named captures. Only recognized fixture fields are copied. Headers and unknown fields never enter the recording. The response projection retains typed demo fields. Extending the demo to a new response field requires extending that projection and its tests.
+Recording is opt-in on the owned synthetic API. Successful requests become replayable templates with named captures. Only recognized fixture fields are copied. Headers and unknown fields never enter the recording. A separate evidence file captures response snapshots and recording-scoped placeholders for selected private references. The response projection retains typed demo fields. Extending the demo to a new response field requires extending that projection and its tests.
 
 To exercise separate processes, run `docker compose up --build --wait`, then:
 
@@ -60,9 +61,9 @@ Replay exits **0** for a match, **1** for a regression, and **2** for invalid in
 
 ## Verification and scope
 
-On Node 26.12.1, the core modules measured **97.58% line coverage** and **87.60% branch coverage**. The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
+The coverage job prints measured core line and branch coverage for each checkout. The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
 
-This implementation supports a single owned commerce API and sequential JSON workflows. SQLite keeps the one-command demo self-contained. The Compose services use a shared loopback namespace with external networking disabled. Notifications are local events. The runner accepts literal IPv4 loopback origins, rejects redirects, and caps each response at 64 KiB and four seconds. The report viewer is a read-only export of real runs. Rebuild it after changing the scenario using the demo and export commands above.
+This implementation supports a single owned commerce API and sequential JSON workflows. SQLite keeps the one-command demo self-contained. The Compose services use a shared loopback namespace with external networking disabled. Notifications are local events. The runner accepts literal IPv4 loopback origins, rejects redirects, and caps each response at 64 KiB and four seconds. The public dashboard displays exported runs. The optional local React dashboard uses PostgreSQL, two workers and S3-compatible artifact storage. Rebuild it after changing the scenario using the demo and export commands above.
 
 
 

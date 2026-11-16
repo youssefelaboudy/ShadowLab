@@ -17,12 +17,10 @@ function emit(data: string) {
     data.replaceAll("\r\n", "\n").replaceAll("\n", "\r\n"),
   ]);
 }
-emit("$ node packages/cli/main.ts demo --out artifacts/demo\n");
-const child = spawn(
-  process.execPath,
-  ["packages/cli/main.ts", "demo", "--out", "artifacts/demo"],
-  { stdio: ["ignore", "pipe", "inherit"] },
-);
+emit("$ node packages/cli/main.ts demo\n");
+const child = spawn(process.execPath, ["packages/cli/main.ts", "demo"], {
+  stdio: ["ignore", "pipe", "inherit"],
+});
 for await (const data of child.stdout) {
   emit(
     String(data)

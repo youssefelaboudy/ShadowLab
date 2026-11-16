@@ -1,3 +1,8 @@
+import { setTimeout as delay } from "node:timers/promises";
+import { at } from "../scenario/format.ts";
+import { orderedSets } from "../scenario/sets.ts";
+import { span } from "../observability/tracing.ts";
+import { defaults, fixtureHash, canonical } from "../fixtures/manifest.ts";
 import { createHash } from "node:crypto";
 import {
   validate,
@@ -41,17 +46,32 @@ export async function exchange(
     if (size > 65536) throw Error("Response size limit");
     chunks.push(c);
   }
-  return {
-    status: response.status,
-    body: JSON.parse(Buffer.concat(chunks).toString()),
-  };
+  try {
+    return {
+      status: response.status,
+      body: JSON.parse(Buffer.concat(chunks).toString()),
+    };
+  } catch {
+    if (response.status >= 400)
+      return { status: response.status, body: { error: "non_json_error" } };
+    throw Error("Invalid JSON response");
+  }
 }
-const numeric = ["quantity", "notifications", "subtotal", "discount", "total"];
+const numeric = [
+  "quantity",
+  "notifications",
+  "subtotal",
+  "discount",
+  "total",
+  "emailCount",
+  "paymentCount",
+];
 const knownErrors = [
   "cart",
   "session",
   "invalid_request",
   "summary_unavailable",
+  "non_json_error",
   "route",
 ];
 function evidence(body: unknown, ids: Map<string, string>) {
@@ -65,6 +85,15 @@ function evidence(body: unknown, ids: Map<string, string>) {
       result[k] = ["CAD", "USD", "EUR", null].includes(v as string)
         ? v
         : "[unknown currency]";
+    if (k === "entity" && object(v))
+      result[k] = { id: ids.get(String(v.id)) || "[unbound id]" };
+    if (k === "items" && Array.isArray(v))
+      result[k] = v.map((x) => ({
+        id: ids.get(String(x?.id)) || "[unbound id]",
+        quantity: Number.isSafeInteger(x?.quantity) ? x.quantity : null,
+      }));
+    if (k === "ready")
+      result[k] = typeof v === "boolean" ? v : "[invalid flag]";
     if (k === "applied")
       result[k] = typeof v === "boolean" ? v : "[invalid flag]";
     if (k === "id") result[k] = ids.get(String(v)) || "[unbound id]";
@@ -88,6 +117,7 @@ async function execute(url: string, s: Scenario, record: boolean) {
   if (
     setup.status !== 201 ||
     setup.body.protocol !== "shadowlab/1" ||
+    setup.body.fixtureHash !== fixtureHash(defaults) ||
     !/^[a-f0-9-]{36}$/.test(setup.body.run)
   )
     throw Error("Fixture handshake failed");
@@ -95,6 +125,7 @@ async function execute(url: string, s: Scenario, record: boolean) {
     bindings = new Map<string, string>(),
     ids = new Map<string, string>();
   const samples: Sample[] = [];
+  const durations: number[] = [];
   try {
     for (const step of s.steps) {
       if (
@@ -102,29 +133,60 @@ async function execute(url: string, s: Scenario, record: boolean) {
       )
         break;
       const path = step.path.replace(variable, (_, key) => bindings.get(key)!);
-      const { status, body } = await exchange(
-        url,
-        path,
-        step.method,
-        step.json,
-        run,
+      const begin = performance.now();
+      const { status, body } = await span(
+        "replay.step",
+        { step: step.name, method: step.method },
+        async () => {
+          let attempts = 0;
+          while (true) {
+            const response = await exchange(
+              url,
+              path,
+              step.method,
+              step.json,
+              run,
+              step.timeout_ms,
+            );
+            attempts++;
+            if (
+              !step.poll ||
+              response.status >= 400 ||
+              at(response.body, step.poll.path) === step.poll.equals
+            )
+              return response;
+            if (attempts >= step.poll.max_attempts)
+              throw Error("Polling limit at " + step.name);
+            await delay(step.poll.interval_ms);
+          }
+        },
       );
-      if (
-        step.capture &&
-        status < 300 &&
-        typeof body?.id === "string" &&
-        /^[a-f0-9-]{36}$/.test(body.id)
-      ) {
-        bindings.set(step.capture, body.id);
-        ids.set(body.id, "${" + step.capture + "}");
+      durations.push(Math.round((performance.now() - begin) * 100) / 100);
+      for (const [key, rule] of Object.entries(captureRules(step))) {
+        const id = at(body, rule.path);
+        if (
+          status < 300 &&
+          typeof id === "string" &&
+          /^[a-f0-9-]{36}$/.test(id)
+        ) {
+          bindings.set(key, id);
+          if (!ids.has(id)) ids.set(id, "${" + key + "}");
+        }
       }
-      samples.push({ status, body: evidence(body, ids) });
+      samples.push({ status, body: orderedSets(evidence(body, ids), s.sets) });
     }
     const recording = record
       ? validate((await exchange(url, "/__record", "GET", undefined, run)).body)
       : undefined;
     return {
       samples,
+      durations,
+      recordedEvidence: record
+        ? (await exchange(url, "/__evidence", "GET", undefined, run)).body
+        : undefined,
+      commit: /^[a-f0-9]{40}$/.test(setup.body.commit)
+        ? String(setup.body.commit)
+        : null,
       recording,
       revision: ["baseline", "stale", "fixed", "missing", "error"].includes(
         setup.body.revision,
@@ -140,6 +202,15 @@ async function execute(url: string, s: Scenario, record: boolean) {
       throw Error("Fixture cleanup failed");
   }
 }
+function captureRules(step: Step) {
+  return step.capture
+    ? { [step.capture]: { path: "$.id" } }
+    : (step.captures ?? {});
+}
+export async function recordEvidence(url: string, input: unknown) {
+  const r = await execute(url, validate(input), true);
+  return { scenario: r.recording!, evidence: r.recordedEvidence };
+}
 export async function recordScenario(url: string, input: unknown) {
   return (await execute(url, validate(input), true)).recording!;
 }
@@ -153,13 +224,22 @@ function violations(step: Step, x: Sample) {
         candidate: Object.hasOwn(x.body, key) ? x.body[key] : missing,
         reason: "assertion",
       });
-  if (step.capture && x.status < 300 && x.body.id !== "${" + step.capture + "}")
-    issues.push({
-      path: "$.id",
-      baseline: "bound identifier",
-      candidate: x.body.id ?? missing,
-      reason: "capture",
-    });
+  for (const r of step.assertions ?? [])
+    if (at(x.body, r.path) !== r.equals)
+      issues.push({
+        path: r.path,
+        baseline: r.equals,
+        candidate: at(x.body, r.path) ?? missing,
+        reason: "assertion",
+      });
+  for (const [key, rule] of Object.entries(captureRules(step)))
+    if (x.status < 300 && !String(at(x.body, rule.path)).startsWith("${"))
+      issues.push({
+        path: rule.path,
+        baseline: "bound identifier",
+        candidate: at(x.body, rule.path) ?? missing,
+        reason: "capture",
+      });
   if (step.path.endsWith("/summary") && x.status === 200) {
     const { total, discount, subtotal } = x.body;
     if (
@@ -182,8 +262,12 @@ export async function replay(
 ) {
   const s = validate(input);
   const startedAt = new Date().toISOString();
-  const a = await execute(baseline, s, false),
-    b = await execute(candidate, s, false);
+  const a = await span("replay.baseline", { scenario: s.name }, () =>
+    execute(baseline, s, false),
+  );
+  const b = await span("replay.candidate", { scenario: s.name }, () =>
+    execute(candidate, s, false),
+  );
   const steps = s.steps.map((step, i) => {
     const before = a.samples[i],
       after = b.samples[i];
@@ -216,7 +300,13 @@ export async function replay(
   const first = steps.find((x) => x.differences.length);
   return {
     scenario: s.name,
-    checksum: createHash("sha256").update(JSON.stringify(s)).digest("hex"),
+    scenarioVersion: s.version,
+    definition: s,
+    baselineCommit: a.commit,
+    candidateCommit: b.commit,
+    fixtureChecksum: fixtureHash(defaults),
+    durations: { baseline: a.durations, candidate: b.durations },
+    checksum: createHash("sha256").update(canonical(s)).digest("hex"),
     fixture: s.fixture,
     clock: s.clock,
     startedAt,

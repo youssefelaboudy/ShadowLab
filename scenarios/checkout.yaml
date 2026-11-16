@@ -1,0 +1,24 @@
+name: checkout-effects
+version: 1
+fixture: carts-basic-v1
+clock: "2026-01-15T10:00:00Z"
+steps:
+  - name: cart
+    request: {method: POST, path: /test/carts}
+    capture:
+      cart_id: {from: response.body, path: $.entity.id}
+  - name: item
+    request: {method: POST, path: "/test/carts/${cart_id}/items", json: {sku: SHOE-001, quantity: 2}}
+    capture:
+      item_id: {from: response.body, path: $.id}
+  - name: coupon
+    request: {method: POST, path: "/test/carts/${cart_id}/coupons", json: {code: SAVE10}}
+  - name: wait_for_coupon
+    request: {method: GET, path: "/test/carts/${cart_id}/settled"}
+    poll: {path: $.ready, equals: true, max_attempts: 3, interval_ms: 5}
+    timeout_ms: 1000
+  - name: checkout
+    request: {method: POST, path: "/test/carts/${cart_id}/checkout"}
+    assertions: [{path: $.total, equals: 18000}]
+comparison: {ignore_paths: [], compare_numeric_exactly: ["$.total"]}
+

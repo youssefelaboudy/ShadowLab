@@ -12,6 +12,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run build
       - run: npm run coverage
       - run: npm run demo -- --out artifacts/demo
       - name: Exercise the container boundary and regression exit code
@@ -30,5 +31,56 @@ jobs:
           name: replay-evidence
           path: artifacts/
           retention-days: 14
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      SHADOWLAB_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: npm run build
+      - run: docker compose -f compose.history.yaml up -d --build --wait
+      - run: curl --fail --retry 30 --retry-all-errors --retry-delay 1 http://127.0.0.1:4200/api/history
+      - run: docker compose -f compose.history.yaml exec -T -e SHADOWLAB_DISPOSABLE_TEST=1 dashboard node tools/history-smoke.ts
+      - run: docker compose -f compose.history.yaml exec -T -e 'PGOPTIONS=-c search_path=queue_test' dashboard node tools/queue-smoke.ts
+      - run: npx playwright install chromium --with-deps
+      - run: npx playwright test tests/browser/dashboard.spec.ts --timeout 90000 --workers=1
+      - if: failure()
+        run: docker compose -f compose.history.yaml logs --tail 60
+      - if: always()
+        run: docker compose -f compose.history.yaml down -v
+  consumer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Start two developer-owned test targets
+        run: |
+          PORT=4101 SHADOWLAB_MODE=baseline node apps/demo-api/server.ts > /tmp/base.log 2>&1 &
+          PORT=4102 SHADOWLAB_MODE=stale node apps/demo-api/server.ts > /tmp/candidate.log 2>&1 &
+          for p in 4101 4102; do curl -s --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:$p/ >/dev/null; done
+      - uses: ./
+        id: seeded
+        continue-on-error: true
+        with:
+          scenario: scenarios/coupon-quantity.yaml
+          targets: config/targets.json
+          out: artifacts/consumer
+      - name: Verify seeded regression failed the action
+        env:
+          RESULT: ${{ steps.seeded.outcome }}
+        run: test "$RESULT" = failure && node -e "if(require('./artifacts/consumer/report.json').first!=='summary')process.exit(1)"
+      - uses: ./
+        with:
+          scenario: scenarios/quantity-before-coupon.json
+          targets: config/targets.json
+          out: artifacts/control
 
 

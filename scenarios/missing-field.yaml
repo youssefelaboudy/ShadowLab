@@ -1,0 +1,14 @@
+name: summary-contract
+version: 1
+fixture: carts-basic-v1
+clock: "2026-01-15T10:00:00Z"
+steps:
+  - name: cart
+    request: {method: POST, path: /test/carts}
+    capture:
+      cart_id: {from: response.body, path: $.id}
+  - name: empty_summary
+    request: {method: GET, path: "/test/carts/${cart_id}/summary"}
+    assertions: [{path: $.currency, equals: CAD}]
+comparison: {ignore_paths: ["$.generatedAt"], compare_numeric_exactly: ["$.total"], ordered_sets: {"$.items": id}}
+

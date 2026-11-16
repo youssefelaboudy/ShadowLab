@@ -3,70 +3,19 @@ import { resolve, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { parseArgs } from "node:util";
 import { validate } from "../core/schema.ts";
-import { replay, recordScenario, type Report } from "../core/replay.ts";
+import { replay, recordEvidence, type Report } from "../core/replay.ts";
 import { startApi } from "../../apps/demo-api/server.ts";
 
-function markdown(r: Report) {
-  const lines = [
-    "# " + r.scenario,
-    "",
-    "**" + r.status + "** · " + r.baseline + " → " + r.candidate,
-    "",
-    "First divergence: " + (r.first ?? "none"),
-    "",
-    "| Step | Request | Result |",
-    "|---|---|---|",
-  ];
-  for (const s of r.steps)
-    lines.push(
-      "| " +
-        s.ordinal +
-        ". " +
-        s.name +
-        " | `" +
-        s.request.method +
-        " " +
-        s.request.path +
-        "` | " +
-        (s.blocked ? "BLOCKED" : s.differences.length ? "DIFF" : "MATCH") +
-        " |",
-    );
-  for (const s of r.steps.filter((x) => x.differences.length)) {
-    lines.push(
-      "",
-      "## " + s.name,
-      "",
-      "| Path | Reference | Candidate | Check |",
-      "|---|---:|---:|---|",
-    );
-    for (const d of s.differences)
-      lines.push(
-        "| `" +
-          d.path +
-          "` | `" +
-          JSON.stringify(d.baseline) +
-          "` | `" +
-          JSON.stringify(d.candidate) +
-          "` | " +
-          d.reason +
-          " |",
-      );
-  }
-  return [
-    ...lines,
-    "",
-    "Money amounts are integer CAD cents.",
-    "",
-    "Fixture: `" + r.fixture + "` · Clock: `" + r.clock + "`",
-    "",
-    "Scenario SHA-256: `" + r.checksum + "`",
-    "",
-  ].join("\n");
-}
+import { markdown } from "./markdown.ts";
+import { publish, prune } from "./artifacts.ts";
+import { readScenario } from "../scenario/format.ts";
+import { defaults, fixtureHash } from "../fixtures/manifest.ts";
+import { flushTraces } from "../observability/tracing.ts";
 async function save(dir: string, r: Report) {
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, "report.json"), JSON.stringify(r, null, 2) + "\n");
-  await writeFile(join(dir, "report.md"), markdown(r));
+  await publish(dir, {
+    "report.json": JSON.stringify(r, null, 2) + "\n",
+    "report.md": markdown(r),
+  });
   console.log(
     r.baseline +
       " → " +
@@ -91,14 +40,29 @@ async function main() {
   const { positionals, values } = parseArgs({
     allowPositionals: true,
     options: Object.fromEntries(
-      ["scenario", "baseline", "candidate", "out", "format"].map((k) => [
-        k,
-        { type: "string" as const },
-      ]),
+      [
+        "scenario",
+        "baseline",
+        "candidate",
+        "out",
+        "format",
+        "fixtures",
+        "targets",
+        "days",
+        "baseline-ref",
+        "candidate-ref",
+      ].map((k) => [k, { type: "string" as const }]),
     ),
   });
   const [command, sub, file] = positionals,
     opts = values as Record<string, string>;
+  if (command === "prune") {
+    console.log(
+      (await prune(resolve(sub || "artifacts"), Number(opts.days ?? 14))) +
+        " runs removed",
+    );
+    return 0;
+  }
   if (command === "report") {
     if (!sub || (opts.format && opts.format !== "markdown"))
       throw Error("Invalid format");
@@ -107,23 +71,50 @@ async function main() {
     );
     return 0;
   }
-  const scenario = validate(
-    JSON.parse(
-      await readFile(
-        opts.scenario || file || "scenarios/coupon-quantity.json",
-        "utf8",
-      ),
-    ),
+  const scenario = await readScenario(
+    opts.scenario || file || "scenarios/coupon-quantity.json",
   );
+  if (opts.fixtures) {
+    const supplied = JSON.parse(
+      await readFile(join(opts.fixtures, "fixture.json"), "utf8"),
+    );
+    if (
+      supplied.id !== scenario.fixture ||
+      fixtureHash(supplied) !== fixtureHash(defaults)
+    )
+      throw Error("Unknown fixture content");
+  }
   if (command === "scenario" && sub === "validate") {
     console.log("Valid: " + scenario.name);
     return 0;
   }
   const out = resolve(opts.out || join("artifacts", randomUUID()));
   if (command === "replay") {
-    const r = await replay(scenario, opts.baseline, opts.candidate);
+    const targets = JSON.parse(
+      await readFile(
+        opts.targets || new URL("../../config/targets.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    if (
+      targets.testMode !== true ||
+      (opts.baseline && opts.baseline !== targets.baseline) ||
+      (opts.candidate && opts.candidate !== targets.candidate)
+    )
+      throw Error("Target outside test configuration");
+    const r = await replay(scenario, targets.baseline, targets.candidate);
     await save(out, r);
     return r.first ? 1 : 0;
+  }
+  if (command === "revisions") {
+    const { compareRefs } = await import("./revisions.ts");
+    const report = await compareRefs(
+      scenario,
+      opts["baseline-ref"],
+      opts["candidate-ref"],
+    );
+    await save(out, report);
+    return report.first ? 1 : 0;
   }
   if (command !== "demo" && command !== "record")
     throw Error("Unknown command");
@@ -132,12 +123,11 @@ async function main() {
     const base = await startApi("baseline");
     servers.push(base);
     if (command === "record") {
-      const result = await recordScenario(base.url, scenario);
-      await mkdir(out, { recursive: true });
-      await writeFile(
-        join(out, "scenario.json"),
-        JSON.stringify(result, null, 2) + "\n",
-      );
+      const result = await recordEvidence(base.url, scenario);
+      await publish(out, {
+        "scenario.json": JSON.stringify(result.scenario, null, 2),
+        "evidence.json": JSON.stringify(result.evidence, null, 2),
+      });
       console.log(join(out, "scenario.json"));
       return 0;
     }
@@ -159,11 +149,23 @@ try {
 } catch (e) {
   const known =
     /^(Fixture (handshake|cleanup) failed|Invalid reference at [a-z0-9_]+|Expected loopback demo target|Response size limit|Unknown variable|Route outside demo contract|Invalid name, version or fixture)$/;
+  const diagnostic =
+    e instanceof Error && e.name === "TimeoutError"
+      ? "HTTP step timed out"
+      : e instanceof Error &&
+          /^Polling limit at [a-z0-9_]+$|^Target outside test configuration$|^Unknown fixture content$|^Invalid YAML scenario$|^Invalid JSON response$/.test(
+            e.message,
+          )
+        ? e.message
+        : undefined;
   console.error(
     "ShadowLab setup error — " +
-      (e instanceof Error && known.test(e.message)
-        ? e.message
-        : "check the scenario, target availability and output path"),
+      (diagnostic ??
+        (e instanceof Error && known.test(e.message)
+          ? e.message
+          : "check the scenario, target availability and output path")),
   );
   process.exitCode = 2;
+} finally {
+  await flushTraces();
 }

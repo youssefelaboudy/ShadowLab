@@ -8,3 +8,13 @@
 
 !scenarios/
 !scenarios/**
+!package-lock.json
+!config/
+!config/**
+!fixtures/
+!fixtures/**
+!docs/
+!docs/history/
+!docs/history/**
+!tools/
+!tools/**

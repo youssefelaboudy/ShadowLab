@@ -1,6 +1,9 @@
 services:
   baseline:
-    build: .
+    build: &build
+      context: .
+      args:
+        SHADOWLAB_COMMIT: ${SHADOWLAB_COMMIT:-${GITHUB_SHA:-}}
     network_mode: none
     environment:
       PORT: 4101
@@ -11,7 +14,7 @@ services:
       timeout: 3s
       retries: 10
   candidate:
-    build: .
+    build: *build
     network_mode: service:baseline
     environment:
       PORT: 4102
