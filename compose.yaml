@@ -1,16 +1,23 @@
 services:
   baseline:
     build: .
+    network_mode: none
     environment:
+      PORT: 4101
       SHADOWLAB_MODE: baseline
-    ports: ["127.0.0.1:4101:4101"]
-    networks: [lab]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4101').then(r=>process.exit(r.status===403?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
   candidate:
     build: .
+    network_mode: service:baseline
     environment:
+      PORT: 4102
       SHADOWLAB_MODE: stale
-    ports: ["127.0.0.1:4102:4101"]
-    networks: [lab]
-networks:
-  lab:
-    internal: true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4102').then(r=>process.exit(r.status===403?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 10

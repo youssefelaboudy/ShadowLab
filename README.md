@@ -45,10 +45,11 @@ node tools/export.ts artifacts/demo
 
 Recording is opt-in on the owned synthetic API. Successful requests become replayable templates with named captures. Only recognized fixture fields are copied. Headers and unknown fields never enter the recording. The response projection retains typed demo fields. Extending the demo to a new response field requires extending that projection and its tests.
 
-To exercise separate processes, run `docker compose up --build -d`, then:
+To exercise separate processes, run `docker compose up --build --wait`, then:
 
 ```sh
-npm run replay -- --scenario scenarios/coupon-quantity.json --baseline http://127.0.0.1:4101 --candidate http://127.0.0.1:4102 --out artifacts/run-001
+docker compose exec baseline node packages/cli/main.ts replay --scenario scenarios/coupon-quantity.json --baseline http://127.0.0.1:4101 --candidate http://127.0.0.1:4102 --out /tmp/evidence
+docker compose cp baseline:/tmp/evidence artifacts/run-001
 node packages/cli/main.ts report artifacts/run-001 --format markdown
 docker compose down
 ```
@@ -59,5 +60,6 @@ Replay exits **0** for a match, **1** for a regression, and **2** for invalid in
 
 The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
 
-This implementation supports a single owned commerce API and sequential JSON workflows. SQLite keeps the one-command demo self-contained. The Compose services use an internal network with ports published on loopback. Notifications are local events. The runner accepts literal IPv4 loopback origins, rejects redirects, and caps each response at 64 KiB and four seconds. The report viewer is a read-only export of real runs. Rebuild it after changing the scenario using the demo and export commands above.
+This implementation supports a single owned commerce API and sequential JSON workflows. SQLite keeps the one-command demo self-contained. The Compose services use a shared loopback namespace with external networking disabled. Notifications are local events. The runner accepts literal IPv4 loopback origins, rejects redirects, and caps each response at 64 KiB and four seconds. The report viewer is a read-only export of real runs. Rebuild it after changing the scenario using the demo and export commands above.
+
 

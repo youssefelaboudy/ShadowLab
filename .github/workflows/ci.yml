@@ -17,13 +17,11 @@ jobs:
       - name: Exercise the container boundary and regression exit code
         shell: bash
         run: |
-          docker compose up -d --build
-          for port in 4101 4102; do
-            curl -s --retry 15 --retry-connrefused --retry-delay 1 http://127.0.0.1:$port/ > /dev/null
-          done
+          docker compose up --wait --build
           rc=0
-          npm run replay -- --baseline http://127.0.0.1:4101 --candidate http://127.0.0.1:4102 --out artifacts/compose || rc=$?
+          docker compose exec -T baseline node packages/cli/main.ts replay --baseline http://127.0.0.1:4101 --candidate http://127.0.0.1:4102 --out /tmp/evidence || rc=$?
           test "$rc" -eq 1
+          docker compose cp baseline:/tmp/evidence artifacts/compose
           node -e "const r=require('./artifacts/compose/report.json');if(r.first!=='summary')process.exit(1)"
       - if: always()
         run: docker compose down
@@ -32,4 +30,5 @@ jobs:
           name: replay-evidence
           path: artifacts/
           retention-days: 14
+
 
