@@ -7,6 +7,7 @@ export type Step = {
   captures?: Record<string, { from: "response.body"; path: string }>;
   assertions?: { path: string; equals: string | number | boolean | null }[];
   timeout_ms?: number;
+  expect_status?: number;
   poll?: {
     path: string;
     equals: string | number | boolean;
@@ -115,11 +116,11 @@ export function validate(input: unknown): Scenario {
   );
   const semanticPath = (x: unknown) =>
     typeof x === "string" &&
-    /^\$\.(?:id|entity\.id|subtotal|discount|total|currency|ready|quantity|notifications|applied|error)$/.test(
+    /^\$\.(?:id|entity\.id|subtotal|discount|total|currency|ready|quantity|notifications|emailCount|paymentCount|applied|error)$/.test(
       x,
     );
   check(
-    !input.exact ||
+    input.exact === undefined ||
       (Array.isArray(input.exact) &&
         input.exact.every((k) =>
           ["$.subtotal", "$.discount", "$.total"].includes(k),
@@ -127,7 +128,7 @@ export function validate(input: unknown): Scenario {
     "Invalid exact path",
   );
   check(
-    !input.sets ||
+    input.sets === undefined ||
       (object(input.sets) &&
         Object.entries(input.sets).every(
           ([k, v]) => k === "$.items" && v === "id",
@@ -149,6 +150,7 @@ export function validate(input: unknown): Scenario {
           "captures",
           "assertions",
           "timeout_ms",
+          "expect_status",
           "poll",
         ]),
       "Invalid step shape",
@@ -223,6 +225,13 @@ export function validate(input: unknown): Scenario {
                 ["number", "string", "boolean"].includes(typeof r.equals)),
           ),
         "Invalid path assertion",
+      );
+    if (s.expect_status !== undefined)
+      check(
+        Number.isInteger(s.expect_status) &&
+          Number(s.expect_status) >= 100 &&
+          Number(s.expect_status) <= 599,
+        "Invalid expected status",
       );
     if (s.timeout_ms !== undefined)
       check(

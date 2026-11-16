@@ -1,34 +1,35 @@
 {
   "node": "v26.12.1",
   "platform": "win32",
+  "normalizedIds": 80,
   "rows": [
     {
       "revision": "fixed",
       "runs": 10,
       "expected": "PASS",
-      "p50_ms": 15,
-      "p95_ms": 69
+      "p50_ms": 27,
+      "p95_ms": 98
     },
     {
       "revision": "stale",
       "runs": 10,
       "expected": "REGRESSION",
-      "p50_ms": 12,
-      "p95_ms": 23
+      "p50_ms": 22,
+      "p95_ms": 40
     },
     {
       "revision": "missing",
       "runs": 10,
       "expected": "REGRESSION",
-      "p50_ms": 11,
-      "p95_ms": 16
+      "p50_ms": 19,
+      "p95_ms": 27
     },
     {
       "revision": "error",
       "runs": 10,
       "expected": "REGRESSION",
-      "p50_ms": 11,
-      "p95_ms": 14
+      "p50_ms": 18,
+      "p95_ms": 23
     }
   ]
 }

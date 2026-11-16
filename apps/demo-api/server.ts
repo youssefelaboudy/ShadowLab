@@ -53,7 +53,9 @@ export function startApi(mode: Mode, port = 0, host = "127.0.0.1") {
       if (path === "/__fixture" && method === "POST") {
         if (
           body.fixture !== fixture ||
-          !Number.isFinite(Date.parse(body.clock))
+          typeof body.clock !== "string" ||
+          !Number.isFinite(Date.parse(body.clock)) ||
+          new Date(body.clock).toISOString() !== body.clock
         )
           return send(400, { error: "fixture" });
         if (sessions.size >= 64) return send(503, { error: "capacity" });

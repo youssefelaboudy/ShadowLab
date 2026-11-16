@@ -35,7 +35,9 @@ The tagged baseline and candidate contain different source code. A replay from f
 
 ## Run the history dashboard
 
-Run `docker compose -f compose.history.yaml up --build --wait` and open `http://127.0.0.1:4200`. Queue a replay, inspect grouped regressions, explore daily outcomes and see which response fields each route covered. PostgreSQL coordinates two workers and indexes immutable reports in a SeaweedFS S3 bucket. The hosted dashboard is a read-only snapshot of six real replays. [Operations and retention](docs/architecture.md) · [Three-minute demo](docs/demo-script.md)
+Run `docker compose -f compose.history.yaml up --build --wait` and open `http://127.0.0.1:4200`. Queue a replay, inspect grouped regressions, explore daily outcomes and see which response fields each route covered. PostgreSQL coordinates two workers and indexes immutable reports in a SeaweedFS S3 bucket. The hosted dashboard is a read-only snapshot of six real replays. [Operations and retention](docs/architecture.md) · [Three-minute demo](docs/demo-script.md) · [Blueprint acceptance record](docs/blueprint.md)
+
+![Worker replay history and step differences](docs/history-preview.png)
 
 ## How replay works
 
@@ -69,7 +71,7 @@ Replay exits **0** for a match, **1** for a regression, and **2** for invalid in
 
 ## Verification and scope
 
-The coverage job prints measured core line and branch coverage for each checkout. The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
+The local Node 26.12.1 suite passed 25 tests, with **98.65% core line coverage** and **90.50% branch coverage**. The coverage job publishes its own measurements for every checkout. The test suite exercises three seeded failures (stale discount, missing currency and HTTP 500), recorder privacy, replayable recordings, concurrent isolation, duplicate notification effects and bounded HTTP failures. The coverage command measures the schema, replay engine and comparator with an 85% line-coverage gate. CI also builds both containers, verifies the regression exit code and uploads reports for 14 days.
 
 This implementation supports a single owned commerce API and sequential JSON workflows. SQLite keeps the one-command demo self-contained. The Compose services use a shared loopback namespace with external networking disabled. Notifications are local events. The runner accepts literal IPv4 loopback origins, rejects redirects, and caps each response at 64 KiB and four seconds. The public dashboard displays exported runs. The optional local React dashboard uses PostgreSQL, two workers and S3-compatible artifact storage. Rebuild it after changing the scenario using the demo and export commands above.
 
@@ -77,7 +79,7 @@ This implementation supports a single owned commerce API and sequential JSON wor
 
 ## Measured replay evidence
 
-The synthetic benchmark repeated the five-step coupon scenario ten times against each of four revisions. All 30 injected failures first diverged at the summary. All ten corrected runs matched. Each revision produced identical sanitized step evidence across its ten fresh fixture pairs. Median local replay times ranged from 11 to 15 ms on Windows with Node 26.12.1. Timings include both HTTP replays and fixture creation and cleanup on already-running servers. [Benchmark results](docs/benchmark.json) · [Benchmark code](tools/benchmark.ts)
+The synthetic benchmark repeated the five-step coupon scenario ten times against each of four revisions. All 30 injected failures first diverged at the summary. All ten corrected runs matched. The runner normalized 80 independently generated cart and item bindings across those 40 replays. Each revision produced identical sanitized step evidence across its ten fresh fixture pairs. Median local replay times ranged from 18 to 27 ms on Windows with Node 26.12.1. Timings include both HTTP replays and fixture creation and cleanup on already-running servers. [Benchmark results](docs/benchmark.json) · [Benchmark code](tools/benchmark.ts)
 
 A second saved scenario moves the quantity change ahead of the coupon. Both revisions then return CAD 180. The passing control isolates the order dependency. [Control scenario](scenarios/quantity-before-coupon.json)
 

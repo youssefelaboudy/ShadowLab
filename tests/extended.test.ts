@@ -191,3 +191,39 @@ test("OTLP receives real spans without replay payloads", async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("a declared reference error is replayable; an unexpected reference failure is diagnosed", async () => {
+  const a = await startApi("error"),
+    b = await startApi("error");
+  try {
+    const s = structuredClone(coupon);
+    s.steps[4].expect_status = 500;
+    s.steps[4].assertions = [
+      { path: "$.error", equals: "summary_unavailable" },
+    ];
+    assert.equal((await replay(s, a.url, b.url)).status, "PASS");
+    await assert.rejects(
+      replay(coupon, a.url, b.url),
+      /Invalid reference at summary/,
+    );
+  } finally {
+    await Promise.all([a.close(), b.close()]);
+  }
+});
+test("CLI reports configuration failure separately from product differences", async () => {
+  for (const args of [
+    ["replay", "--candidate", "https://example.com"],
+    [
+      "scenario",
+      "validate",
+      "scenarios/checkout.yaml",
+      "--fixtures",
+      "fixtures/absent",
+    ],
+  ]) {
+    const child = spawn(process.execPath, ["packages/cli/main.ts", ...args], {
+      stdio: "ignore",
+    });
+    assert.equal((await once(child, "close"))[0], 2);
+  }
+});

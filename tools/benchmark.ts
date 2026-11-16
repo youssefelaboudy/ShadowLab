@@ -7,6 +7,7 @@ const scenario = JSON.parse(
 const baseline = await startApi("baseline");
 try {
   const rows = [];
+  let normalizedIds = 0;
   for (const mode of ["fixed", "stale", "missing", "error"] as Mode[]) {
     const candidate = await startApi(mode);
     const durations: number[] = [];
@@ -16,6 +17,7 @@ try {
         const start = performance.now();
         const result = await replay(scenario, baseline.url, candidate.url);
         durations.push(performance.now() - start);
+        normalizedIds += result.normalized.distinctBoundIds;
         const evidence = JSON.stringify(result.steps);
         if (signature !== undefined && evidence !== signature)
           throw Error("Inconsistent evidence");
@@ -37,7 +39,12 @@ try {
   }
   console.log(
     JSON.stringify(
-      { node: process.version, platform: process.platform, rows },
+      {
+        node: process.version,
+        platform: process.platform,
+        normalizedIds,
+        rows,
+      },
       null,
       2,
     ),

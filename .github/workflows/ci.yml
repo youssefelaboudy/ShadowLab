@@ -18,6 +18,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run coverage
+      - run: node tools/check-repeatability.ts
       - run: npm run demo -- --out artifacts/demo
       - name: Exercise the container boundary and regression exit code
         shell: bash
@@ -57,6 +58,41 @@ jobs:
         run: docker compose -f compose.history.yaml logs --tail 60
       - if: always()
         run: docker compose -f compose.history.yaml down -v
+  revisions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Replay the tagged source-level defect
+        run: |
+          rc=0
+          node packages/cli/main.ts revisions --baseline-ref demo/baseline-v2 --candidate-ref demo/stale-v2 --scenario scenarios/coupon-quantity.yaml --out artifacts/tagged || rc=$?
+          test "$rc" -eq 1
+          node -e "const r=require('./artifacts/tagged/report.json'); if(r.first!=='summary'||r.baselineCommit===r.candidateCommit)process.exit(1)"
+      - name: Gate the proposed source revision
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          rc=0
+          node packages/cli/main.ts revisions --baseline-ref "$BASE" --candidate-ref "$HEAD" --scenario scenarios/coupon-quantity.yaml --out artifacts/pr || rc=$?
+          if [ "$rc" -eq 1 ]; then node tools/annotate.ts artifacts/pr/report.json scenarios/coupon-quantity.yaml; fi
+          exit "$rc"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: git-revision-evidence
+          path: artifacts/
+          retention-days: 14
   consumer:
     runs-on: ubuntu-latest
     steps:

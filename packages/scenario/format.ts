@@ -37,6 +37,7 @@ export function decode(input: unknown) {
             "assertions",
             "poll",
             "timeout_ms",
+            "expect_status",
           ].includes(k),
       ) ||
       Object.keys(s.request).some(
@@ -47,10 +48,13 @@ export function decode(input: unknown) {
     return {
       name: s.name,
       ...s.request,
-      ...(s.capture ? { captures: s.capture } : {}),
-      ...(s.assertions ? { assertions: s.assertions } : {}),
-      ...(s.poll ? { poll: s.poll } : {}),
-      ...(s.timeout_ms ? { timeout_ms: s.timeout_ms } : {}),
+      ...(s.expect_status !== undefined
+        ? { expect_status: s.expect_status }
+        : {}),
+      ...(s.capture !== undefined ? { captures: s.capture } : {}),
+      ...(s.assertions !== undefined ? { assertions: s.assertions } : {}),
+      ...(s.poll !== undefined ? { poll: s.poll } : {}),
+      ...(s.timeout_ms !== undefined ? { timeout_ms: s.timeout_ms } : {}),
     };
   });
   return validate({

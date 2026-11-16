@@ -117,7 +117,6 @@ async function execute(url: string, s: Scenario, record: boolean) {
   if (
     setup.status !== 201 ||
     setup.body.protocol !== "shadowlab/1" ||
-    setup.body.fixtureHash !== fixtureHash(defaults) ||
     !/^[a-f0-9-]{36}$/.test(setup.body.run)
   )
     throw Error("Fixture handshake failed");
@@ -127,6 +126,8 @@ async function execute(url: string, s: Scenario, record: boolean) {
   const samples: Sample[] = [];
   const durations: number[] = [];
   try {
+    if (setup.body.fixtureHash !== fixtureHash(defaults))
+      throw Error("Fixture handshake failed");
     for (const step of s.steps) {
       if (
         [...step.path.matchAll(variable)].some(([, key]) => !bindings.has(key))
@@ -180,6 +181,7 @@ async function execute(url: string, s: Scenario, record: boolean) {
       : undefined;
     return {
       samples,
+      bindings,
       durations,
       recordedEvidence: record
         ? (await exchange(url, "/__evidence", "GET", undefined, run)).body
@@ -214,8 +216,18 @@ export async function recordEvidence(url: string, input: unknown) {
 export async function recordScenario(url: string, input: unknown) {
   return (await execute(url, validate(input), true)).recording!;
 }
-function violations(step: Step, x: Sample) {
+function violations(step: Step, x: Sample, exact: string[] = []) {
   const issues: Difference[] = [];
+  for (const path of exact) {
+    const value = at(x.body, path);
+    if (value !== undefined && !Number.isSafeInteger(value))
+      issues.push({
+        path,
+        baseline: "integer minor units",
+        candidate: value,
+        reason: "numeric contract",
+      });
+  }
   for (const [key, value] of Object.entries(step.assert || {}))
     if (x.body[key] !== value)
       issues.push({
@@ -229,7 +241,8 @@ function violations(step: Step, x: Sample) {
       issues.push({
         path: r.path,
         baseline: r.equals,
-        candidate: at(x.body, r.path) ?? missing,
+        candidate:
+          at(x.body, r.path) === undefined ? missing : at(x.body, r.path),
         reason: "assertion",
       });
   for (const [key, rule] of Object.entries(captureRules(step)))
@@ -271,7 +284,13 @@ export async function replay(
   const steps = s.steps.map((step, i) => {
     const before = a.samples[i],
       after = b.samples[i];
-    if (!before || before.status >= 400 || violations(step, before).length)
+    if (
+      !before ||
+      (step.expect_status !== undefined
+        ? before.status !== step.expect_status
+        : before.status >= 400) ||
+      violations(step, before, s.exact).length
+    )
       throw Error("Invalid reference at " + step.name);
     const differences: Difference[] = [];
     if (after) {
@@ -284,7 +303,7 @@ export async function replay(
         });
       differences.push(
         ...compare(before.body, after.body, s.ignore),
-        ...violations(step, after),
+        ...violations(step, after, s.exact),
       );
     }
     return {
@@ -305,6 +324,23 @@ export async function replay(
     baselineCommit: a.commit,
     candidateCommit: b.commit,
     fixtureChecksum: fixtureHash(defaults),
+    normalized: {
+      distinctBoundIds: [...a.bindings].filter(
+        ([key, id]) => b.bindings.has(key) && b.bindings.get(key) !== id,
+      ).length,
+      volatileFields: steps.reduce(
+        (n, step) =>
+          n +
+          (step.candidate
+            ? s.ignore.filter(
+                (path) =>
+                  at(step.baseline.body, path) !==
+                  at(step.candidate!.body, path),
+              ).length
+            : 0),
+        0,
+      ),
+    },
     durations: { baseline: a.durations, candidate: b.durations },
     checksum: createHash("sha256").update(canonical(s)).digest("hex"),
     fixture: s.fixture,

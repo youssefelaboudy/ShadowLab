@@ -129,6 +129,11 @@
                 "maximum": 10
               }
             }
+          },
+          "expect_status": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
           }
         }
       }

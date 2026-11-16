@@ -44,7 +44,10 @@ if (import.meta.main) {
   });
   while (!stop) {
     try {
-      if (!storageReady) { await initBucket(); storageReady = true; }
+      if (!storageReady) {
+        await initBucket();
+        storageReady = true;
+      }
       const ran = await processOne();
       const uploaded = await uploadOne();
       if (!ran && !uploaded) await sleep(300);
